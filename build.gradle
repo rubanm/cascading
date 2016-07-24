@@ -45,11 +45,12 @@ buildscript {
   }
   dependencies {
     classpath 'com.netflix.nebula:gradle-extra-configurations-plugin:2.2.1'
+    classpath 'org.jfrog.buildinfo:build-info-extractor-gradle:4.4.0'
   }
 }
 
 apply from: 'etc/version.gradle'
-apply from: "etc/s3Upload.gradle"
+// apply from: "etc/s3Upload.gradle"
 
 allprojects {
 
@@ -57,11 +58,47 @@ allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'provided-base'
 
+  apply plugin: 'java'
+  apply plugin: 'maven-publish'
+  apply plugin: 'com.jfrog.artifactory'
+
+  version = releaseVersion
+  group = 'cascading'
+
+  tasks.withType(Javadoc) {
+    options.addStringOption('Xdoclint:none', '-quiet')
+  }
+
   repositories {
     mavenLocal()
     mavenCentral()
     maven {url = 'http://conjars.org/repo/'}
     maven {url = 'https://repository.apache.org/content/repositories/releases/'}
+    maven {url = 'https://artifactory.twitter.biz/libs-releases-local/'}
+  }
+
+  artifactory {
+    contextUrl = "${artifactory_contextUrl}"
+    publish {
+        repository {
+            repoKey = 'libs-releases-local'
+            username = "${artifactory_user}"
+            password = "${artifactory_password}"
+            maven = true
+
+        }       
+        defaults {
+            publications ('mavenJava')
+        }
+    }
+  }
+
+  publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
   }
 }
 
@@ -142,7 +179,7 @@ subprojects {
   }
 
   dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+    testCompile group: 'junit', name: 'junit', version: '4.8.1'
   }
 
   test {
@@ -236,14 +273,14 @@ task prepareRelease( type: Copy, dependsOn: [':prepareDist', 'cascading-core:bui
                                              'cascading-expression:build', 'cascading-xml:build',
                                              'cascading-platform:build', ':allJavadoc'] ) {
 
-  s3UploadDocs.dependsOn << prepareRelease
-  s3UploadArtifacts.dependsOn << prepareRelease
+  //s3UploadDocs.dependsOn << prepareRelease
+  //s3UploadArtifacts.dependsOn << prepareRelease
 
   // copy dist and apply any analytics scripts
   def analytics = System.getProperty( 'publish.docs.analytics', '' )
 
-  from "${distDir}/javadoc/"
-  into "${s3UploadDocs.source}/javadoc"
+  // from "${distDir}/javadoc/"
+  //into "${s3UploadDocs.source}/javadoc"
 
   filter {line ->
     line.replaceAll( "</body>", "${analytics}\n</body>" )
@@ -269,7 +306,7 @@ task buildPackage( type: Tar, dependsOn: buildDist ) {
 
   description = "package current build, does not run tests"
 
-  destinationDir = file( s3UploadArtifacts.source )
+  // destinationDir = file( s3UploadArtifacts.source )
   baseName = "cascading-${releaseVersion}"
   compression = "GZIP"
 
@@ -280,7 +317,7 @@ task buildPackage( type: Tar, dependsOn: buildDist ) {
 
 task buildLatestMeta( dependsOn: buildPackage ) {
 
-  s3UploadArtifacts.dependsOn << buildLatestMeta
+  // s3UploadArtifacts.dependsOn << buildLatestMeta
 
   ext.latestArchivePath = null
   ext.latestReleaseTagPath = null
@@ -289,11 +326,11 @@ task buildLatestMeta( dependsOn: buildPackage ) {
 
 buildLatestMeta << {
 
-  def destination = s3UploadArtifacts.source
+  // def destination = s3UploadArtifacts.source
   def releaseTar = buildPackage.archivePath.name
 
   latestArchivePath = new File( destination, 'latest.txt' )
-  latestArchivePath.write( "http://${s3UploadArtifacts.destination}${releaseTar}" )
+  // latestArchivePath.write( "http://${s3UploadArtifacts.destination}${releaseTar}" )
 
   latestReleaseTagPath = new File( destination, 'latest-tag.txt' )
   latestReleaseTagPath.write( "${releaseTag}" )

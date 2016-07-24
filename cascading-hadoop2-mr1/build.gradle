@@ -39,13 +39,13 @@ dependencies {
   provided group: 'org.slf4j', name: 'slf4j-api', version: '1.7.5'
   provided group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.5'
 
-  testCompile project( path: ':cascading-core', configuration: 'testArtifacts' )
-  testCompile project( path: ':cascading-platform', configuration: 'testArtifacts' )
+  // testCompile project( path: ':cascading-core', configuration: 'testArtifacts' )
+  // testCompile project( path: ':cascading-platform', configuration: 'testArtifacts' )
 
   provided( group: 'org.apache.hadoop', name: 'hadoop-mapreduce-client-core', version: hadoop2Version )
   provided( group: 'org.apache.hadoop', name: 'hadoop-common', version: hadoop2Version )
 
-  testCompile( group: 'org.apache.hadoop', name: 'hadoop-minicluster', version: hadoop2Version )
+  // testCompile( group: 'org.apache.hadoop', name: 'hadoop-minicluster', version: hadoop2Version )
 }
 
 configurations.all {
@@ -87,7 +87,7 @@ javadoc {
 
   configure( options ) {
     links << 'http://hadoop.apache.org/docs/r2.2.0/api/'
-    links << "http://${rootProject.s3UploadDocs.destination}javadoc/cascading-core".toString()
+    // links << "http://${rootProject.s3UploadDocs.destination}javadoc/cascading-core".toString()
 
 //    linksOffline( '../../../cascading-core', "http://${rootProject.s3UploadDocs.destination}javadoc/cascading-core".toString() )
   }

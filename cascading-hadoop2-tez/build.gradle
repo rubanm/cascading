@@ -30,11 +30,11 @@ ext.tezVersion = '0.8.2'
 if( System.properties[ 'hadoop2tez.release.final' ] )
   tezVersion = System.properties[ 'hadoop2tez.release.final' ]
 
-repositories {
-
-  if( tezVersion.contains( 'SNAPSHOT' ) )
-    maven {url = 'https://repository.apache.org/content/repositories/snapshots'}
-}
+// repositories {
+//
+//   if( tezVersion.contains( 'SNAPSHOT' ) )
+//    maven {url = 'https://repository.apache.org/content/repositories/snapshots'}
+// }
 
 dependencies {
 
@@ -54,13 +54,13 @@ dependencies {
   provided( group: 'org.apache.hadoop', name: 'hadoop-common', version: hadoop2Version )
   provided( group: 'org.apache.hadoop', name: 'hadoop-hdfs', version: hadoop2Version )
 
-  testCompile project( path: ':cascading-core', configuration: 'testArtifacts' )
-  testCompile project( path: ':cascading-platform', configuration: 'testArtifacts' )
+  // testCompile project( path: ':cascading-core', configuration: 'testArtifacts' )
+  // testCompile project( path: ':cascading-platform', configuration: 'testArtifacts' )
 
-  testCompile( group: 'org.apache.tez', name: 'tez-tests', version: tezVersion, classifier: 'tests' )
-  testCompile( group: 'org.apache.tez', name: 'tez-api', version: tezVersion )
-  testCompile( group: 'org.apache.tez', name: 'tez-dag', version: tezVersion )
-  testCompile( group: 'org.apache.hadoop', name: 'hadoop-minicluster', version: hadoop2Version )
+  // testCompile( group: 'org.apache.tez', name: 'tez-tests', version: tezVersion, classifier: 'tests' )
+  // testCompile( group: 'org.apache.tez', name: 'tez-api', version: tezVersion )
+  // testCompile( group: 'org.apache.tez', name: 'tez-dag', version: tezVersion )
+  // testCompile( group: 'org.apache.hadoop', name: 'hadoop-minicluster', version: hadoop2Version )
 
   if( hadoop2Version.startsWith( '2.4' ) ) // hadoop 2.4
   {
@@ -123,7 +123,7 @@ javadoc {
 
   configure( options ) {
     links << 'http://hadoop.apache.org/docs/r2.4.0/api/'
-    links << "http://${rootProject.s3UploadDocs.destination}javadoc/cascading-core".toString()
+    // links << "http://${rootProject.s3UploadDocs.destination}javadoc/cascading-core".toString()
 
 //    linksOffline( '../../../../../../../cascading-core', "http://${rootProject.s3UploadDocs.destination}javadoc/cascading-core".toString() )
   }
