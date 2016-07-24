@@ -60,6 +60,7 @@ public class BaseFlowNode implements Serializable, FlowNode, ProcessLogger
   private transient FlowStep flowStep;
 
   protected ElementGraph nodeSubGraph;
+  protected FlowElementGraph flowElementGraph;
   protected List<? extends ElementGraph> pipelineGraphs = Collections.emptyList();
 
   private transient Set<FlowElement> sourceElements;
@@ -121,6 +122,7 @@ public class BaseFlowNode implements Serializable, FlowNode, ProcessLogger
     {
     this.id = Util.createUniqueIDWhichStartsWithAChar(); // timeline server cannot filter strings that start with a number
     this.nodeSubGraph = nodeSubGraph;
+    this.flowElementGraph = flowElementGraph;
 
     setPipelineGraphs( pipelineGraphs );
 
@@ -229,6 +231,12 @@ public class BaseFlowNode implements Serializable, FlowNode, ProcessLogger
   public ElementGraph getElementGraph()
     {
     return nodeSubGraph;
+    }
+
+  @Override
+  public FlowElementGraph getFlowElementGraph()
+    {
+    return flowElementGraph;
     }
 
   @Override

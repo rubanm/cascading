@@ -44,6 +44,7 @@ import cascading.flow.FlowStepListener;
 import cascading.flow.planner.graph.AnnotatedGraph;
 import cascading.flow.planner.graph.ElementGraph;
 import cascading.flow.planner.graph.ElementGraphs;
+import cascading.flow.planner.graph.FlowElementGraph;
 import cascading.flow.planner.process.FlowNodeGraph;
 import cascading.flow.stream.annotations.StreamMode;
 import cascading.management.CascadingServices;
@@ -98,7 +99,7 @@ public abstract class BaseFlowStep<Config> implements FlowStep<Config>, ProcessL
   /** Field graph */
   private final ElementGraph elementGraph;
 
-  private FlowNodeGraph flowNodeGraph;
+  protected FlowNodeGraph flowNodeGraph;
 
   /** Field sources */
   protected final Map<Tap, Set<String>> sources = new HashMap<>(); // all sources
@@ -362,6 +363,11 @@ public abstract class BaseFlowStep<Config> implements FlowStep<Config>, ProcessL
     return elementGraph;
     }
 
+  @Override
+  public FlowElementGraph getFlowElementGraph()
+    {
+    return null; // TODO: clean up / mark as unsupported
+    }
   protected EnumMultiMap getAnnotations()
     {
     return ( (AnnotatedGraph) elementGraph ).getAnnotations();

@@ -26,6 +26,7 @@ import java.util.Set;
 
 import cascading.flow.FlowElement;
 import cascading.flow.planner.graph.ElementGraph;
+import cascading.flow.planner.graph.FlowElementGraph;
 import cascading.pipe.Group;
 import cascading.tap.Tap;
 
@@ -70,4 +71,6 @@ public interface ProcessModel
   Map<String, Tap> getTrapMap();
 
   ElementGraph getElementGraph();
+
+  FlowElementGraph getFlowElementGraph();
   }

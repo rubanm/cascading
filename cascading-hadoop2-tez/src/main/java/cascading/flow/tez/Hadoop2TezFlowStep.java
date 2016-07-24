@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,9 +42,12 @@ import cascading.flow.FlowProcess;
 import cascading.flow.FlowRuntimeProps;
 import cascading.flow.hadoop.ConfigurationSetter;
 import cascading.flow.hadoop.util.HadoopUtil;
+import cascading.flow.planner.BaseFlowNode;
 import cascading.flow.planner.BaseFlowStep;
 import cascading.flow.planner.FlowStepJob;
 import cascading.flow.planner.graph.ElementGraph;
+import cascading.flow.planner.graph.ElementGraphs;
+import cascading.flow.planner.graph.FlowElementGraph;
 import cascading.flow.planner.process.FlowNodeGraph;
 import cascading.flow.planner.process.ProcessEdge;
 import cascading.flow.stream.annotations.StreamMode;
@@ -56,6 +60,7 @@ import cascading.pipe.Group;
 import cascading.pipe.GroupBy;
 import cascading.pipe.Merge;
 import cascading.property.AppProps;
+import cascading.tap.CompositeTap;
 import cascading.tap.Tap;
 import cascading.tap.hadoop.Hfs;
 import cascading.tap.hadoop.PartitionTap;
@@ -131,6 +136,57 @@ public class Hadoop2TezFlowStep extends BaseFlowStep<TezConfiguration>
   public Hadoop2TezFlowStep( ElementGraph elementGraph, FlowNodeGraph flowNodeGraph )
     {
     super( elementGraph, flowNodeGraph );
+    boolean unwrapEnabled = true; // getConfig().getBoolean( "cascading.tez.compositetap.unwrap", false );
+    if (unwrapEnabled)
+      {
+      logInfo( "handling unwrapEnabled logic: ");
+      Set<FlowNode> vertexSet = this.flowNodeGraph.vertexSet();
+      Map<String, FlowNode> flowNodeByID = new HashMap<String, FlowNode>();
+      for( FlowNode node : vertexSet )
+        {
+          logInfo( "node ID: " + node.getID() + ". node: " + node );
+          flowNodeByID.put(node.getID(), node);
+        }
+
+      Iterator<FlowNode> iterator = this.flowNodeGraph.getOrderedTopologicalIterator();
+      while( iterator.hasNext() )
+        {
+        FlowNode original = iterator.next();
+
+        logInfo( "handling tap during unwrap: " + original );
+        FlowNode unwrapped = unwrapCompositeTaps( original );
+
+        // replace original with unwrapped in flowNodeGraph
+        Set<ProcessEdge> incoming = this.flowNodeGraph.incomingEdgesOf( original );
+        this.flowNodeGraph.addVertex( unwrapped );
+        for( ProcessEdge in : incoming )
+          {
+          logInfo( "found incoming: " + in );
+          this.flowNodeGraph.removeEdge( in );
+          FlowNode source = flowNodeByID.get( in.getSourceProcessID() );
+          if( source == null )
+            {
+            throw new IllegalStateException( "no source FlowNode found for ID: " + in.getSourceProcessID() );
+            }
+          this.flowNodeGraph.addEdge( source, unwrapped );
+          }
+
+        Set<ProcessEdge> outgoing = this.flowNodeGraph.outgoingEdgesOf( original );
+        for( ProcessEdge out : outgoing )
+          {
+          logInfo( "found outgoing: " + out );
+          this.flowNodeGraph.removeEdge( out );
+          FlowNode sink = flowNodeByID.get( out.getSinkProcessID() );
+          if( sink == null )
+            {
+            throw new IllegalStateException( "no sink FlowNode found for ID: " + out.getSourceProcessID() );
+            }
+          this.flowNodeGraph.addEdge( unwrapped, sink );
+          }
+        this.flowNodeGraph.removeVertex( original );
+        }
+
+      }
     }
 
   @Override
@@ -197,6 +253,50 @@ public class Hadoop2TezFlowStep extends BaseFlowStep<TezConfiguration>
     DAG dag = createDAG( flowProcess, initializedStepConfig );
 
     return new Hadoop2TezFlowStepJob( clientState, this, initializedStepConfig, dag );
+    }
+
+  private FlowNode unwrapCompositeTaps( FlowNode flowNode )
+    {
+    ElementGraph elementGraph = flowNode.getElementGraph();
+    FlowElementGraph flowElementGraph = flowNode.getFlowElementGraph();
+
+    Set<? extends FlowElement> accumulatedSources = flowNode.getSourceElements( StreamMode.Accumulated );
+
+    Set<FlowElement> sources = new HashSet<>( Collections.unmodifiableSet( ElementGraphs.findSources( elementGraph, FlowElement.class ) ) );
+    sources.removeAll( accumulatedSources );
+
+    for( FlowElement element : sources )
+      {
+      if( element instanceof CompositeTap )
+        {
+          logInfo( "handling CompositeTap: " + (CompositeTap) element );
+          Iterator<Tap> iterator = ((CompositeTap) element).getChildTaps();
+          Map<String, Tap> nodeSources = flowElementGraph.getSourceMap();
+          while( iterator.hasNext() )
+            {
+              Tap child = iterator.next();
+              // TODO: fix this to work with multiple children
+              ElementGraphs.replaceElementWith( flowElementGraph, element, child );
+              ElementGraphs.replaceElementWith( elementGraph, element, child );
+            }
+        }
+      }
+
+    BaseFlowNode unwrapped = new BaseFlowNode(flowElementGraph, elementGraph,
+      flowNode.getPipelineGraphs(), flowNode.getFlowNodeDescriptor() );
+    unwrapped.setFlowStep( flowNode.getFlowStep() );
+    unwrapped.setOrdinal( flowNode.getOrdinal() );
+    unwrapped.setName( flowNode.getName() );
+
+    for( Map.Entry<String, String> entry: flowNode.getProcessAnnotations().entrySet() )
+      {
+        unwrapped.addProcessAnnotation( entry.getKey(), entry.getValue() );
+      }
+
+    unwrapped.setFlowNodeStats( flowNode.getFlowNodeStats() );
+    unwrapped.setFlowStep( flowNode.getFlowStep() );
+
+    return (FlowNode) unwrapped;
     }
 
   private DAG createDAG( FlowProcess<TezConfiguration> flowProcess, TezConfiguration initializedConfig )
@@ -675,6 +775,8 @@ public class Hadoop2TezFlowStep extends BaseFlowStep<TezConfiguration>
       if( element instanceof Tap )
         {
         Tap tap = (Tap) element;
+
+        logInfo( "handling Tap: " + tap );
 
         if( tap.getIdentifier() == null )
           throw new IllegalStateException( "tap may not have null identifier: " + tap.toString() );
